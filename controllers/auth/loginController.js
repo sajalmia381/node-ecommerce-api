@@ -1,9 +1,10 @@
 import Joi from 'joi';
 import bcrypt from 'bcrypt';
-import { User } from '../../models';
+import { RefreshToken, User } from '../../models';
 
 import CustomErrorHandler from '../../services/CustomErrorHandler';
 import JwtService from '../../services/JwtService';
+import { REFRESH_KEY } from '../../config';
 
 const loginController = {
   login: async (req, res, next) => {
@@ -20,7 +21,7 @@ const loginController = {
     
     // Start database query
     try {
-      const user = await User.findOne({email: req.body.email});
+      const user = await User.findOne({email: req.body.email}).select("-updateAt -__v");
       if (!user) {
         return next(CustomErrorHandler.invalidCredentials());
       }
@@ -32,15 +33,11 @@ const loginController = {
       }
       
       // Generate token
-      
-      const access_token = JwtService.sign({_id: user._id, role: user.role, email: user.email});
-      const responseData = {
-        _id: user._id,
-        name: user.name,
-        role: user.role,
-        email: user.email,
-      }
-      res.json({access_token, user: responseData })
+      const payload = {_id: user._id, role: user.role, email: user.email}
+      const access_token = JwtService.sign(payload);
+      const refresh_token = JwtService.sign(payload, '30d', REFRESH_KEY)
+      await RefreshToken.create({ token: refresh_token });
+      res.json({access_token, refresh_token, user: user })
       res.end();
     } catch (err) {
       return next(err)

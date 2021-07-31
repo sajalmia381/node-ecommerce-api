@@ -1,8 +1,9 @@
 import Joi from 'joi';
 import bcrypt from 'bcrypt';
-import { User } from '../../models';
+import { RefreshToken, User } from '../../models';
 import CustomErrorHandler from '../../services/CustomErrorHandler';
 import JwtService from '../../services/JwtService';
+import { REFRESH_KEY } from '../../config';
 
 const registerController = {
     register: async (req, res, next) => {
@@ -40,15 +41,20 @@ const registerController = {
         })
         
         let access_token;
+        let refresh_token;
         try{
             const obj = await user.save()
+            const payload = {_id: obj._id, role: obj.role, email: obj.email};
+            console.log(payload)
             // JsonWebToken
-            access_token = JwtService.sign({_id: obj._id, role: obj.role, email: obj.email});
+            access_token = JwtService.sign(payload);
+            refresh_token = JwtService.sign(payload, '30d', REFRESH_KEY);
+            await RefreshToken.create({ token: refresh_token });
+            res.status(201).json({access_token, refresh_token});
         } catch (err) {
             return next(err)
         }
         
-        res.status(201).json({access_token});
     }
 }
 
