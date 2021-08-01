@@ -17,6 +17,9 @@ class CustomErrorHandler extends Error {
   static serverError(message="Internal Server Error") {
     return new CustomErrorHandler(500, message)
   }
+  static notAllow(message="Not allow") {
+    return new CustomErrorHandler(405, message)
+  }
 }
 
 export default CustomErrorHandler
